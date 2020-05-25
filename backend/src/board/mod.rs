@@ -1,16 +1,18 @@
+mod cell;
 mod piece;
 mod position;
-mod cell;
+mod turn;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
-use nalgebra::{MatrixN, U10, ArrayStorage};
 use nalgebra::base::iter::MatrixIter;
+use nalgebra::{ArrayStorage, MatrixN, U10};
 
-use piece::{Piece, Cell};
-use crate::board::position::Position;
 use crate::board::cell::Cell;
+use crate::board::position::Position;
+use crate::board::turn::Move;
+use piece::{Color as PieceColor, Piece};
 
 const MATRIX_SIZE: usize = 10;
 
@@ -23,19 +25,17 @@ pub struct Board {
 impl Board {
     pub fn from_fn<F>(f: F) -> Self
     where
-        F: FnMut(usize, usize) -> Piece
+        F: FnMut(usize, usize) -> Piece,
     {
         let cells = MatrixN::<Piece, U10>::from_fn(f);
-        Self { cells}
+        Self { cells }
     }
 
     pub fn new() -> Self {
-        Board::from_fn(|x,y| {
-            match y {
-                0..=3 if (x + y) % 2 == 1 => Piece::BlackPawn,
-                6..=9 if (x + y) % 2 == 1 => Piece::WhitePawn,
-                _ => Piece::Empty
-            }
+        Board::from_fn(|x, y| match y {
+            0..=3 if (x + y) % 2 == 1 => Piece::BlackPawn,
+            6..=9 if (x + y) % 2 == 1 => Piece::WhitePawn,
+            _ => Piece::Empty,
         })
     }
 
@@ -46,17 +46,19 @@ impl Board {
     pub fn iter(&self) -> BoardIter<'_> {
         self.cells.iter()
     }
+
+    // TODO
+    // pub fn find_best_move(color: PieceColor) -> Move {}
 }
 
 pub fn filter_by<I, C, F>(iter: I, f: F) -> Vec<C>
 where
     C: Cell,
     I: Iterator<Item = C>,
-    F: Fn(&C) -> bool
+    F: Fn(&C) -> bool,
 {
     iter.filter(f).collect()
 }
-
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -108,20 +110,12 @@ impl IndexMut<Position> for Board {
     }
 }
 
-
-#[test]
-fn test_board_creation() {
-    let board = Board::new();
-    // FIXME: write a meaningful test
-    assert!(false);
-}
-
 #[test]
 fn test_position_from_index() {
-    assert_eq!(Board::position_from_index(9), Position((0,9)));
-    assert_eq!(Board::position_from_index(15), Position((1,5)));
-    assert_eq!(Board::position_from_index(10), Position((1,0)));
-    assert_eq!(Board::position_from_index(19), Position((1,9)));
+    assert_eq!(Board::position_from_index(9), Position((0, 9)));
+    assert_eq!(Board::position_from_index(15), Position((1, 5)));
+    assert_eq!(Board::position_from_index(10), Position((1, 0)));
+    assert_eq!(Board::position_from_index(19), Position((1, 9)));
 }
 #[test]
 fn test_indexing_usize() {
@@ -134,7 +128,7 @@ fn test_indexing_usize() {
 #[test]
 fn test_filter_white_pawns() {
     let board = Board::new();
-    let iter=  board.iter();
+    let iter = board.iter();
     let white_pawns = filter_by(iter.enumerate(), Cell::is_white);
     assert_eq!(white_pawns.len(), 20);
     assert_eq!(white_pawns[0], (61, &Piece::WhitePawn));
@@ -143,3 +137,14 @@ fn test_filter_white_pawns() {
     assert_eq!(white_pawns.last(), Some(&(98, &Piece::WhitePawn)));
 }
 
+#[test]
+fn test_filter_black_pawns() {
+    let board = Board::new();
+    let iter = board.iter();
+    let white_pawns = filter_by(iter.enumerate(), Cell::is_black);
+    assert_eq!(white_pawns.len(), 20);
+    assert_eq!(white_pawns[0], (1, &Piece::BlackPawn));
+    assert_eq!(white_pawns[1], (3, &Piece::BlackPawn));
+    assert_eq!(white_pawns[2], (5, &Piece::BlackPawn));
+    assert_eq!(white_pawns.last(), Some(&(38, &Piece::BlackPawn)));
+}
